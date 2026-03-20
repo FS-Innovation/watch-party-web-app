@@ -182,6 +182,7 @@ function ShowTab({ session, onUpdate }: { session: Record<string, any> | null; o
               >
                 Trigger Polls
               </button>
+              <SendLinksButton />
             </div>
           </>
         )}
@@ -437,6 +438,48 @@ function AnalyticsTab({ sessionId }: { sessionId: string | undefined }) {
       >
         Export All Data (JSON)
       </button>
+    </div>
+  );
+}
+
+function SendLinksButton() {
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+
+  const sendAll = async () => {
+    if (sending) return;
+    if (!confirm("Send magic link emails to ALL registered attendees?")) return;
+    setSending(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/send-magic-link/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setResult(data);
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        onClick={sendAll}
+        disabled={sending}
+        className="bg-card-hover border border-border text-foreground py-2 px-4 rounded-xl text-sm hover:border-pink disabled:opacity-50"
+      >
+        {sending ? "Sending..." : "Send Magic Links (Email)"}
+      </button>
+      {result && (
+        <span className="text-xs text-gray-400">
+          {result.sent} sent, {result.failed} failed of {result.total}
+        </span>
+      )}
     </div>
   );
 }
