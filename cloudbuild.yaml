@@ -45,7 +45,7 @@ substitutions:
   _SERVICE: watch-party
   _REGION: us-central1
   _REPO: cloud-run-builds
-  _APP_URL: https://watch-party-HASH.run.app  # Update after first deploy
+  _APP_URL: https://watch-party-964508386622.us-central1.run.app
 
 options:
   logging: CLOUD_LOGGING_ONLY
