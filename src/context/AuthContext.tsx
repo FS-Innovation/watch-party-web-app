@@ -3,6 +3,21 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { Registration } from "@/types/database";
 
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
+const DEMO_USER: Registration = {
+  id: "demo-user-001",
+  first_name: "Samantha",
+  last_name: "Demo",
+  email: "samantha@demo.com",
+  phone: "+1234567890",
+  location: "Los Angeles, CA",
+  magic_token: "demo-token",
+  ticket_number: 847,
+  avatar_url: null,
+  created_at: new Date().toISOString(),
+};
+
 interface AuthContextType {
   user: Registration | null;
   loading: boolean;
@@ -21,6 +36,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const authenticate = useCallback(async () => {
+    if (DEMO_MODE) {
+      setUser(DEMO_USER);
+      setLoading(false);
+      return;
+    }
+
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
 
@@ -56,6 +77,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (DEMO_MODE) {
+      setUser(DEMO_USER);
+      setLoading(false);
+      return;
+    }
+
     // Check if already authenticated
     const storedToken = sessionStorage.getItem("magic_token");
     if (storedToken && !new URLSearchParams(window.location.search).get("token")) {

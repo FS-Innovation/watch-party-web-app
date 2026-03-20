@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createServerClient } from "@/lib/supabase/server";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://screening.steven.com";
 
@@ -30,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     const magicLink = `${APP_URL}?token=${user.magic_token}`;
 
-    await resend.emails.send({
+    await getResend().emails.send({
       from: "BTD Private Screening <screening@steven.com>",
       to: user.email,
       subject: "Your Private Screening Link",
