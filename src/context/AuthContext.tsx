@@ -24,8 +24,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
 
+    // TODO: Re-enable token auth once magic links are fully set up
+    // For now, allow anyone to access the app with a guest user
     if (!token) {
-      setError("No access token provided. Please use the link sent to your phone.");
+      setUser({
+        id: "guest-user-00000000",
+        first_name: "Guest",
+        last_name: "Viewer",
+        email: "guest@screening.app",
+        phone: "",
+        location: "",
+        magic_token: "guest-bypass",
+        ticket_number: 0,
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+      });
+      sessionStorage.setItem("magic_token", "guest-bypass");
       setLoading(false);
       return;
     }
@@ -59,6 +73,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check if already authenticated
     const storedToken = sessionStorage.getItem("magic_token");
     if (storedToken && !new URLSearchParams(window.location.search).get("token")) {
+      // If guest bypass token, just re-run authenticate (which will set guest user)
+      if (storedToken === "guest-bypass") {
+        authenticate();
+        return;
+      }
       // Re-auth with stored token
       fetch("/api/auth", {
         method: "POST",
