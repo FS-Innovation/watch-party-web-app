@@ -21,7 +21,7 @@ export default function PollsTab() {
   const [results, setResults] = useState<PollResults>({});
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({});
   const [completionCount, setCompletionCount] = useState(0);
-  const [totalTarget, setTotalTarget] = useState(3500);
+  const [totalTarget] = useState(3500);
   const [submitting, setSubmitting] = useState<string | null>(null);
 
   const fetchPolls = useCallback(async () => {

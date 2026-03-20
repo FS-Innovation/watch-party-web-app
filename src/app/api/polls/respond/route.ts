@@ -23,7 +23,11 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
     // Update engagement
-    await supabase.rpc("increment_interactions", { rid: user.id }).catch(() => {});
+    try {
+      await supabase.rpc("increment_interactions", { rid: user.id });
+    } catch {
+      // RPC may not exist yet
+    }
 
     return NextResponse.json({ success: true });
   } catch {

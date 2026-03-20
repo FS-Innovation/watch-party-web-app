@@ -44,9 +44,11 @@ export async function POST(request: NextRequest) {
       );
 
       // Increment attendee count
-      await supabase.rpc("increment_attendee_count", { sid: sessionId }).catch(() => {
+      try {
+        await supabase.rpc("increment_attendee_count", { sid: sessionId });
+      } catch {
         // RPC may not exist yet, safe to ignore
-      });
+      }
     }
 
     return NextResponse.json({ user });

@@ -24,22 +24,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // Increment upvote count on the question
-    await supabase.rpc("increment_upvote_count", { qid: question_id }).catch(async () => {
-      // Fallback: manual increment
-      const { data } = await supabase
-        .from("live_questions")
-        .select("upvote_count")
-        .eq("id", question_id)
-        .single();
+    // Increment upvote count on the question (manual increment)
+    const { data: questionData } = await supabase
+      .from("live_questions")
+      .select("upvote_count")
+      .eq("id", question_id)
+      .single();
 
-      if (data) {
-        await supabase
-          .from("live_questions")
-          .update({ upvote_count: (data as { upvote_count: number }).upvote_count + 1 })
-          .eq("id", question_id);
-      }
-    });
+    if (questionData) {
+      await supabase
+        .from("live_questions")
+        .update({ upvote_count: (questionData.upvote_count || 0) + 1 })
+        .eq("id", question_id);
+    }
 
     return NextResponse.json({ success: true });
   } catch {

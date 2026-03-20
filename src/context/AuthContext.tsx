@@ -1,7 +1,6 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabase/client";
 import type { Registration } from "@/types/database";
 
 interface AuthContextType {

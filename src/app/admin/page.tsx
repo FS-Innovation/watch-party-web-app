@@ -16,7 +16,8 @@ const PHASES: { id: Phase; label: string }[] = [
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>("show");
-  const [session, setSession] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [session, setSession] = useState<Record<string, any> | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [adminKey, setAdminKey] = useState("");
 
@@ -118,7 +119,8 @@ export default function AdminDashboard() {
 }
 
 // SHOW Tab
-function ShowTab({ session, onUpdate }: { session: any; onUpdate: () => void }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ShowTab({ session, onUpdate }: { session: Record<string, any> | null; onUpdate: () => void }) {
   const changePhase = async (phase: Phase) => {
     if (!session) return;
     await fetch("/api/admin/phase", {
@@ -384,9 +386,9 @@ function AnalyticsTab({ sessionId }: { sessionId: string | undefined }) {
   const fetchStats = useCallback(async () => {
     if (!sessionId) return;
 
-    const [attendees, pollResponses, photos, questions, cards] = await Promise.all([
+    const [attendees, , photos, questions, cards] = await Promise.all([
       supabase.from("attendance_signals").select("id", { count: "exact" }).eq("session_id", sessionId),
-      supabase.from("poll_responses").select("registration_id").eq("poll_id", sessionId), // approximation
+      supabase.from("poll_responses").select("registration_id").eq("poll_id", sessionId),
       supabase.from("photobooth_entries").select("id", { count: "exact" }).eq("session_id", sessionId),
       supabase.from("live_questions").select("id", { count: "exact" }).eq("session_id", sessionId),
       supabase.from("conversation_card_responses").select("id", { count: "exact" }),
