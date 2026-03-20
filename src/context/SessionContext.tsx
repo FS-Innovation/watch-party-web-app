@@ -1,19 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { supabase } from "@/lib/supabase/client";
 import type { Session, Phase } from "@/types/database";
-
-const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-
-const DEMO_SESSION: Session = {
-  id: "demo-session-001",
-  event_id: "btd-private-screening",
-  current_phase: "pre-screening",
-  started_at: new Date().toISOString(),
-  ended_at: null,
-  attendee_count: 3247,
-  created_at: new Date().toISOString(),
-};
 
 interface SessionContextType {
   session: Session | null;
@@ -35,14 +24,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchSession = useCallback(async () => {
-    if (DEMO_MODE) {
-      setSession(DEMO_SESSION);
-      setLoading(false);
-      return;
-    }
-
     try {
-      const { supabase } = await import("@/lib/supabase/client");
       const { data, error } = await supabase
         .from("watch_party_sessions")
         .select("*")
@@ -61,42 +43,31 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (DEMO_MODE) {
-      setSession(DEMO_SESSION);
-      setLoading(false);
-      return;
-    }
-
     fetchSession();
 
-    // Subscribe to realtime changes (only when not in demo mode)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let channel: any = null;
-
-    import("@/lib/supabase/client").then(({ supabase }) => {
-      channel = supabase
-        .channel("session-changes")
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "watch_party_sessions",
-          },
-          (payload) => {
-            if (payload.new) {
-              setSession(payload.new as Session);
-            }
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel("session-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "watch_party_sessions",
+        },
+        (payload) => {
+          if (payload.new) {
+            setSession(payload.new as Session);
           }
-        )
-        .subscribe();
-    });
+        }
+      )
+      .subscribe();
 
     // Polling fallback
     intervalRef.current = setInterval(fetchSession, POLL_INTERVAL);
 
     return () => {
-      if (channel) channel.unsubscribe();
+      channel.unsubscribe();
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [fetchSession]);

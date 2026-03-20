@@ -1,19 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-
-const DEMO_USER = {
-  id: "demo-user-001",
-  first_name: "Samantha",
-  last_name: "Demo",
-  email: "samantha@demo.com",
-  phone: "+1234567890",
-  location: "Los Angeles, CA",
-  magic_token: "demo-token",
-  ticket_number: 847,
-  avatar_url: null,
-  created_at: new Date().toISOString(),
-};
+import { createServerClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,11 +9,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Token required" }, { status: 400 });
     }
 
-    if (DEMO_MODE) {
-      return NextResponse.json({ user: DEMO_USER });
-    }
-
-    const { createServerClient } = await import("@/lib/supabase/server");
     const supabase = createServerClient();
 
     const { data: user, error } = await supabase
