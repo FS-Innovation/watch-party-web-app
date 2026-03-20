@@ -25,6 +25,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = params.get("token");
 
     if (!token) {
+      // Dev bypass: allow access without a magic link in development
+      if (process.env.NODE_ENV === "development") {
+        setUser({
+          id: "dev-user-00000000",
+          first_name: "Dev",
+          last_name: "User",
+          email: "dev@localhost",
+          phone: "",
+          location: "Local",
+          magic_token: "dev-bypass",
+          ticket_number: 0,
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+        });
+        sessionStorage.setItem("magic_token", "dev-bypass");
+        setLoading(false);
+        return;
+      }
       setError("No access token provided. Please use the link sent to your phone.");
       setLoading(false);
       return;
