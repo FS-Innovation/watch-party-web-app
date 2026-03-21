@@ -23,6 +23,7 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
 
   // TODO: Re-enable phase gating for live event
   // For now, all tabs available so the team can preview the full experience
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const isTabAvailable = (_tabId: TabId): boolean => {
     void phase; // suppress unused warning
     return true;
