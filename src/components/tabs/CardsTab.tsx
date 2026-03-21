@@ -4,19 +4,18 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useSession } from "@/context/SessionContext";
-import type { ConversationCard, ConversationCardResponse, Visibility } from "@/types/database";
+import type { ConversationCard, Visibility } from "@/types/database";
 
 export default function CardsTab() {
   const { user } = useAuth();
   const { session } = useSession();
   const [cards, setCards] = useState<ConversationCard[]>([]);
-  const [currentCardIdx, setCurrentCardIdx] = useState(0);
+  const [currentIdx, setCurrentIdx] = useState(0);
   const [answer, setAnswer] = useState("");
-  const [visibility, setVisibility] = useState<Visibility>("anonymous");
-  const [myResponses, setMyResponses] = useState<{ [cardId: string]: ConversationCardResponse }>({});
-  const [otherResponses, setOtherResponses] = useState<ConversationCardResponse[]>([]);
+  const [visibility, setVisibility] = useState<Visibility>("name");
   const [submitting, setSubmitting] = useState(false);
-  const [showOthers, setShowOthers] = useState(false);
+  const [submitted, setSubmitted] = useState<Set<string>>(new Set());
+  const [answeredCount, setAnsweredCount] = useState(0);
 
   const fetchCards = useCallback(async () => {
     if (!session) return;
@@ -29,51 +28,38 @@ export default function CardsTab() {
     if (data) setCards(data as ConversationCard[]);
   }, [session]);
 
-  const fetchMyResponses = useCallback(async () => {
-    if (!user || !cards.length) return;
-    const cardIds = cards.map((c) => c.id);
-    const { data } = await supabase
-      .from("conversation_card_responses")
-      .select("*")
-      .eq("registration_id", user.id)
-      .in("card_id", cardIds);
+  const fetchAnswers = useCallback(async () => {
+    if (!cards.length || !user) return;
+    const card = cards[currentIdx];
 
-    if (data) {
-      const mapped: { [id: string]: ConversationCardResponse } = {};
-      data.forEach((r) => (mapped[(r as ConversationCardResponse).card_id] = r as ConversationCardResponse));
-      setMyResponses(mapped);
+    const { count } = await supabase
+      .from("conversation_card_responses")
+      .select("*", { count: "exact", head: true })
+      .eq("card_id", card.id);
+
+    setAnsweredCount(count || 0);
+
+    const { data: myResponses } = await supabase
+      .from("conversation_card_responses")
+      .select("card_id")
+      .eq("registration_id", user.id);
+
+    if (myResponses) {
+      setSubmitted(new Set(myResponses.map((r: { card_id: string }) => r.card_id)));
     }
-  }, [user, cards]);
-
-  const fetchOtherResponses = useCallback(async () => {
-    const card = cards[currentCardIdx];
-    if (!card) return;
-    const { data } = await supabase
-      .from("conversation_card_responses")
-      .select("*")
-      .eq("card_id", card.id)
-      .neq("visibility", "optout")
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (data) setOtherResponses(data as ConversationCardResponse[]);
-  }, [cards, currentCardIdx]);
+  }, [cards, currentIdx, user]);
 
   useEffect(() => {
     fetchCards();
   }, [fetchCards]);
 
   useEffect(() => {
-    fetchMyResponses();
-  }, [fetchMyResponses]);
-
-  useEffect(() => {
-    if (showOthers) fetchOtherResponses();
-  }, [showOthers, fetchOtherResponses]);
+    fetchAnswers();
+  }, [fetchAnswers]);
 
   const submitAnswer = async () => {
-    const card = cards[currentCardIdx];
-    if (!user || !card || !answer.trim() || submitting) return;
+    if (!user || !answer.trim() || submitting) return;
+    const card = cards[currentIdx];
     setSubmitting(true);
 
     try {
@@ -91,91 +77,84 @@ export default function CardsTab() {
 
       if (res.ok) {
         setAnswer("");
-        fetchMyResponses();
-        setShowOthers(true);
+        setSubmitted((prev) => new Set([...prev, card.id]));
+        fetchAnswers();
       }
     } finally {
       setSubmitting(false);
     }
   };
 
-  const currentCard = cards[currentCardIdx];
-  const hasAnswered = currentCard ? !!myResponses[currentCard.id] : false;
-
   if (!cards.length) {
     return (
-      <div className="flex flex-col items-center justify-center h-full px-6 text-center">
-        <h3 className="font-serif text-xl text-gray-400 mb-2">Conversation Cards</h3>
-        <p className="text-gray-600 text-sm">Cards will appear here soon.</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
+        <span className="material-symbols-outlined text-4xl text-on-surface-variant/30 mb-4">layers</span>
+        <h3 className="font-headline font-bold text-xl text-on-surface-variant mb-2">Cards coming soon</h3>
+        <p className="font-body text-sm text-on-surface-variant/60">Conversation cards will appear here.</p>
       </div>
     );
   }
 
+  const card = cards[currentIdx];
+  const hasSubmitted = submitted.has(card.id);
+
   return (
-    <div className="px-4 py-6 pb-24">
-      {/* Card navigation */}
-      <div className="flex gap-2 mb-4 justify-center">
-        {cards.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => { setCurrentCardIdx(idx); setShowOthers(false); }}
-            className={`w-8 h-8 rounded-full text-sm font-medium transition-all ${
-              idx === currentCardIdx
-                ? "bg-pink text-white"
-                : "bg-gray-800 text-gray-400"
-            }`}
-          >
-            {idx + 1}
-          </button>
-        ))}
+    <div className="pt-24 pb-32 px-6 max-w-2xl mx-auto min-h-screen">
+      {/* Breadcrumb */}
+      <div className="flex justify-between items-end mb-8">
+        <div className="space-y-1">
+          <p className="font-label text-[10px] uppercase tracking-[0.25em] text-on-surface-variant font-medium">
+            ICEBREAKER
+          </p>
+          <div className="h-0.5 w-12 bg-primary-container" />
+        </div>
+        <p className="font-label text-xs tracking-widest text-on-surface-variant/40">
+          {String(currentIdx + 1).padStart(2, "0")}/{String(cards.length).padStart(2, "0")}
+        </p>
       </div>
 
-      {currentCard && (
-        <div className="space-y-4">
-          {/* Card image */}
-          <div className="bg-card rounded-2xl overflow-hidden border border-border">
-            {currentCard.card_image_url ? (
-              <img
-                src={currentCard.card_image_url}
-                alt={currentCard.prompt_text}
-                className="w-full h-auto"
-              />
-            ) : (
-              <div className="p-8 text-center">
-                <p className="font-serif text-xl text-foreground">
-                  {currentCard.prompt_text}
-                </p>
-              </div>
-            )}
+      {/* Main Card */}
+      <section className="bg-[#111] rounded-xl p-8 shadow-2xl relative overflow-hidden ring-1 ring-outline-variant/10 mb-8">
+        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-24 h-6 bg-surface-container-highest/20 rotate-1" />
+
+        <div className="space-y-12">
+          <div className="relative">
+            <span className="material-symbols-outlined absolute -left-2 -top-2 text-primary-container/20 text-4xl">
+              format_quote
+            </span>
+            <h2 className="font-cursive text-2xl md:text-3xl leading-relaxed text-on-surface/90 pt-4">
+              {card.prompt_text}
+            </h2>
           </div>
 
-          {/* Answer input */}
-          {!hasAnswered ? (
-            <div className="space-y-3">
-              <textarea
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value.slice(0, 300))}
-                placeholder="Your answer..."
-                className="w-full bg-card border border-border rounded-xl p-4 text-foreground placeholder-gray-600 resize-none h-24 focus:outline-none focus:border-pink"
-                maxLength={300}
-              />
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600 text-xs">{answer.length}/300</span>
+          {!hasSubmitted ? (
+            <div className="space-y-4">
+              <div className="relative">
+                <textarea
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value.slice(0, 300))}
+                  placeholder="Write your note here..."
+                  rows={5}
+                  className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-6 font-body text-on-surface-variant placeholder:text-on-surface-variant/30 focus:ring-1 focus:ring-primary-container/50 focus:border-primary-container/50 transition-all resize-none"
+                  maxLength={300}
+                />
+                <div className="absolute bottom-4 right-4 font-label text-[10px] tracking-widest text-on-surface-variant/40">
+                  {answer.length}/300
+                </div>
               </div>
 
-              {/* Visibility toggle */}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-6 pt-2">
                 {(["name", "anonymous", "optout"] as Visibility[]).map((v) => (
                   <button
                     key={v}
                     onClick={() => setVisibility(v)}
-                    className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                    className={`font-label text-[10px] uppercase tracking-[0.15em] pb-1 transition-all active:scale-95 ${
                       visibility === v
-                        ? "bg-pink text-white"
-                        : "bg-gray-800 text-gray-400"
+                        ? "font-semibold text-secondary border-b border-secondary"
+                        : "font-medium text-on-surface-variant/60 hover:text-on-surface-variant"
                     }`}
                   >
-                    {v === "name" ? "Show my name" : v === "anonymous" ? "Anonymous" : "Private"}
+                    {v === "name" ? "MY NAME" : v === "anonymous" ? "ANONYMOUS" : "PRIVATE"}
                   </button>
                 ))}
               </div>
@@ -183,49 +162,61 @@ export default function CardsTab() {
               <button
                 onClick={submitAnswer}
                 disabled={!answer.trim() || submitting}
-                className="w-full bg-pink hover:bg-pink-dark disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold py-3 rounded-xl transition-all active:scale-[0.98]"
+                className="w-full bg-surface-container-highest/50 border border-primary-container/30 text-primary-fixed-dim font-headline font-bold py-5 rounded-md hover:bg-primary-container hover:text-on-primary-container transition-all duration-300 uppercase tracking-widest text-sm flex items-center justify-center gap-3 group active:scale-[0.98] disabled:opacity-40"
               >
-                {submitting ? "Submitting..." : "Submit Answer"}
+                {submitting ? "SUBMITTING..." : "SUBMIT"}
+                <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">
+                  arrow_forward
+                </span>
               </button>
             </div>
           ) : (
-            <div className="bg-card rounded-xl p-4 border border-pink/20">
-              <p className="text-gray-400 text-xs mb-1">Your answer</p>
-              <p className="text-foreground">{myResponses[currentCard.id]?.answer_text}</p>
+            <div className="text-center py-4">
+              <span className="material-symbols-outlined text-primary text-3xl mb-2">check_circle</span>
+              <p className="font-label text-sm text-on-surface-variant">Your note has been submitted</p>
             </div>
           )}
+        </div>
+      </section>
 
-          {/* Other responses */}
-          {hasAnswered && (
-            <div>
-              <button
-                onClick={() => setShowOthers(!showOthers)}
-                className="text-pink text-sm mb-3"
-              >
-                {showOthers ? "Hide others' answers" : "See others' answers"}
-              </button>
-
-              {showOthers && (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {otherResponses
-                    .filter((r) => r.registration_id !== user?.id)
-                    .map((r) => (
-                      <div key={r.id} className="bg-card-hover rounded-xl p-3 border border-border">
-                        <p className="text-foreground text-sm">{r.answer_text}</p>
-                        <p className="text-gray-600 text-xs mt-1">
-                          {r.visibility === "anonymous" ? "Anonymous" : "Community member"}
-                        </p>
-                      </div>
-                    ))}
+      {/* Social Context */}
+      <div className="flex flex-col items-center gap-4">
+        {answeredCount > 0 && (
+          <>
+            <div className="flex -space-x-3 overflow-hidden">
+              {Array.from({ length: Math.min(answeredCount, 3) }).map((_, i) => (
+                <div
+                  key={i}
+                  className="inline-block h-8 w-8 rounded-full ring-2 ring-background bg-surface-container-highest"
+                />
+              ))}
+              {answeredCount > 3 && (
+                <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-high ring-2 ring-background">
+                  <span className="text-[10px] font-label font-bold text-primary-fixed-dim">
+                    +{answeredCount - 3}
+                  </span>
                 </div>
               )}
             </div>
-          )}
+            <p className="font-body text-xs text-on-surface-variant/60">
+              <span className="text-on-surface font-medium">{answeredCount} others</span> answered this prompt
+            </p>
+          </>
+        )}
+      </div>
 
-          {/* Product link */}
-          <p className="text-center text-gray-600 text-xs">
-            Steven&apos;s Conversation Cards
-          </p>
+      {/* Card Navigation */}
+      {cards.length > 1 && (
+        <div className="flex justify-center gap-2 mt-8">
+          {cards.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentIdx(idx)}
+              className={`w-2 h-2 rounded-full transition-all ${
+                idx === currentIdx ? "bg-primary w-6" : "bg-outline-variant/30"
+              }`}
+            />
+          ))}
         </div>
       )}
     </div>

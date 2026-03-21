@@ -87,140 +87,189 @@ export default function MeTab() {
   const isPostScreening = phase === "post-screening";
 
   return (
-    <div className="px-4 py-6 pb-24">
-      {/* Header */}
-      {isPostScreening && (
-        <div className="text-center mb-6 pb-4 border-b border-border">
-          <p className="text-pink text-xs uppercase tracking-widest mb-1">
-            Screening Receipt
-          </p>
-          <h2 className="font-serif text-xl text-foreground">
-            BTD Private Screening
-          </h2>
-          <p className="text-gray-500 text-sm">
-            {new Date().toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </p>
-        </div>
-      )}
+    <div className="relative px-6 pt-28 pb-32 max-w-lg mx-auto overflow-hidden min-h-screen">
+      {/* Atmosphere Glow */}
+      <div className="absolute -top-20 -left-20 w-64 h-64 bg-primary-container/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/2 -right-20 w-48 h-48 bg-secondary-container/10 rounded-full blur-[80px] pointer-events-none" />
 
-      {/* Profile card */}
-      <div className="bg-card rounded-2xl p-5 border border-border mb-4">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink to-purple-500 flex items-center justify-center text-white font-serif text-xl">
-            {user?.first_name?.[0]}
+      {/* Title */}
+      <div className="mb-12 relative">
+        <p className="font-label text-[10px] uppercase tracking-[0.3em] text-secondary mb-2">
+          digital keepsake
+        </p>
+        <h2 className="font-headline font-bold uppercase tracking-tighter text-4xl leading-none text-on-surface">
+          YOUR SCREENING RECEIPT
+        </h2>
+      </div>
+
+      {/* Receipt Container */}
+      <div className="relative bg-surface-container-low p-8 rounded-lg shadow-2xl border-l border-primary-container/20 overflow-hidden">
+        {/* Profile */}
+        <div className="flex items-start gap-6 mb-12">
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-secondary p-1">
+              <div className="w-full h-full rounded-full bg-surface-container-highest flex items-center justify-center">
+                <span className="font-headline font-bold text-2xl text-on-surface">
+                  {user?.first_name?.[0] || "G"}
+                </span>
+              </div>
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-tertiary-container rounded-full flex items-center justify-center shadow-lg">
+              <span
+                className="material-symbols-outlined text-[12px] text-on-tertiary-container"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                verified
+              </span>
+            </div>
           </div>
-          <div>
-            <h3 className="text-foreground font-semibold text-lg">
+          <div className="flex-1">
+            <h3 className="font-headline font-bold text-2xl uppercase tracking-tight text-on-surface">
               {user?.first_name} {user?.last_name}
             </h3>
-            <p className="text-gray-500 text-sm">{user?.location || "Location not set"}</p>
-            <p className="text-gray-600 text-xs">
-              Ticket #{String(user?.ticket_number || 0).padStart(4, "0")}
+            <p className="font-label text-xs text-on-surface-variant uppercase tracking-widest mt-1">
+              {user?.location || "Guest"}
+            </p>
+            <p className="font-mono text-[10px] text-primary/60 mt-2">
+              #BTD-{String(user?.ticket_number || 0).padStart(4, "0")}
             </p>
           </div>
         </div>
-      </div>
 
-      {/* Photo */}
-      {activity.photoUrl && (
-        <div className="mb-4">
-          <img
-            src={activity.photoUrl}
-            alt="Your photobooth pic"
-            className="w-full rounded-2xl border border-border"
-          />
-        </div>
-      )}
-
-      {/* Activity tracker */}
-      <div className="bg-card rounded-2xl p-5 border border-border mb-4">
-        <h4 className="text-gray-400 text-xs uppercase tracking-wider mb-3">
-          Your Activity
-        </h4>
-        <div className="space-y-3">
-          <ActivityRow
+        {/* Stats */}
+        <div className="space-y-6 mb-12 relative">
+          <StatRow
             label="Polls completed"
             value={`${activity.pollsCompleted}/${activity.totalPolls}`}
             done={activity.pollsCompleted === activity.totalPolls && activity.totalPolls > 0}
           />
-          <ActivityRow
+          <StatRow
             label="Question submitted"
-            value={activity.questionSubmitted ? "Yes" : "Not yet"}
+            value={activity.questionSubmitted ? (activity.questionAnswered ? "" : "Submitted") : "Not yet"}
             done={activity.questionSubmitted}
+            special={activity.questionAnswered ? "ANSWERED BY STEVEN" : undefined}
           />
-          {activity.questionAnswered && (
-            <ActivityRow label="Question answered by Steven" value="Yes!" done />
-          )}
-          <ActivityRow
-            label="Photobooth"
-            value={activity.photoTaken ? "Done" : "Not yet"}
+          <StatRow
+            label="Icebreakers"
+            value={`${activity.cardAnswers.length}/${activity.cardAnswers.length || 2}`}
+            done={activity.cardAnswers.length > 0}
+          />
+          <StatRow
+            label="Photo captured"
+            value=""
             done={activity.photoTaken}
           />
         </div>
+
+        {/* Moment Capture Quote */}
+        {activity.momentCapture && (
+          <div className="relative py-8 border-t border-outline-variant/10">
+            <div className="absolute -top-3 left-6 bg-surface-container-low px-2">
+              <span
+                className="material-symbols-outlined text-secondary/40 text-sm"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                format_quote
+              </span>
+            </div>
+            <p className="font-cursive text-3xl text-on-surface leading-tight text-center">
+              &ldquo;{activity.momentCapture}&rdquo;
+            </p>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="mt-8 pt-6 border-t border-dashed border-outline-variant/20 text-center">
+          <p className="font-label text-[9px] uppercase tracking-[0.2em] text-on-surface-variant/50 italic">
+            screenshot this — it&apos;s yours to keep.
+          </p>
+        </div>
+
+        {/* Ticket Notch Cuts */}
+        <div className="absolute top-1/2 -left-3 w-6 h-6 bg-surface rounded-full -translate-y-1/2" />
+        <div className="absolute top-1/2 -right-3 w-6 h-6 bg-surface rounded-full -translate-y-1/2" />
       </div>
 
-      {/* Conversation Card answers */}
+      {/* Card Answers (expandable section) */}
       {activity.cardAnswers.length > 0 && (
-        <div className="bg-card rounded-2xl p-5 border border-border mb-4">
-          <h4 className="text-gray-400 text-xs uppercase tracking-wider mb-3">
-            Conversation Cards
-          </h4>
+        <div className="mt-8">
+          <p className="font-label text-[10px] uppercase tracking-[0.25em] text-on-surface-variant/50 mb-4">
+            Your Icebreaker Answers
+          </p>
           {activity.cardAnswers.map((ca, i) => (
-            <div key={i} className={i > 0 ? "mt-3 pt-3 border-t border-border" : ""}>
-              <p className="text-gray-500 text-xs mb-1">{ca.prompt}</p>
-              <p className="text-foreground text-sm">{ca.answer}</p>
+            <div key={i} className="bg-surface-container-low p-6 border-l border-primary-container/20 mb-3">
+              <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant/40 mb-2">
+                {ca.prompt}
+              </p>
+              <p className="font-body text-sm text-on-surface">{ca.answer}</p>
             </div>
           ))}
         </div>
       )}
 
-      {/* Poll answers (post-screening) */}
+      {/* Poll Answers (post-screening) */}
       {isPostScreening && activity.pollAnswers.length > 0 && (
-        <div className="bg-card rounded-2xl p-5 border border-border mb-4">
-          <h4 className="text-gray-400 text-xs uppercase tracking-wider mb-3">
+        <div className="mt-8">
+          <p className="font-label text-[10px] uppercase tracking-[0.25em] text-on-surface-variant/50 mb-4">
             Your Poll Answers
-          </h4>
+          </p>
           {activity.pollAnswers.map((pa, i) => (
-            <div key={i} className={i > 0 ? "mt-3 pt-3 border-t border-border" : ""}>
-              <p className="text-gray-500 text-xs mb-1">{pa.question}</p>
-              <p className="text-pink text-sm">{pa.answer}</p>
+            <div key={i} className="bg-surface-container-low p-6 border-l border-primary-container/20 mb-3">
+              <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant/40 mb-2">
+                {pa.question}
+              </p>
+              <p className="font-body text-sm text-primary">{pa.answer}</p>
             </div>
           ))}
         </div>
       )}
 
-      {/* Moment capture (post-screening) */}
-      {isPostScreening && activity.momentCapture && (
-        <div className="bg-card rounded-2xl p-5 border border-border mb-4">
-          <h4 className="text-gray-400 text-xs uppercase tracking-wider mb-1">
-            Your Takeaway
-          </h4>
-          <p className="text-foreground text-sm">{activity.momentCapture}</p>
-        </div>
-      )}
+      {/* Decorative */}
+      <div className="mt-12 flex justify-center opacity-30">
+        <div className="w-1 h-12 bg-gradient-to-b from-secondary to-transparent" />
+      </div>
     </div>
   );
 }
 
-function ActivityRow({
+function StatRow({
   label,
   value,
   done,
+  special,
 }: {
   label: string;
   value: string;
   done: boolean;
+  special?: string;
 }) {
   return (
-    <div className="flex justify-between items-center">
-      <span className="text-gray-400 text-sm">{label}</span>
-      <span className={`text-sm font-medium ${done ? "text-pink" : "text-gray-500"}`}>
-        {value}
+    <div className="flex items-center justify-between group">
+      <span className="font-label text-[11px] uppercase tracking-widest text-on-surface-variant group-hover:text-on-surface transition-colors">
+        {label}
       </span>
+      <div className="flex items-center gap-3">
+        {special ? (
+          <>
+            <span className="font-body text-[11px] font-medium text-secondary uppercase">
+              {special}
+            </span>
+            <span
+              className="material-symbols-outlined text-secondary text-[14px]"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              star
+            </span>
+          </>
+        ) : (
+          <>
+            {value && <span className="font-body text-sm font-light">{value}</span>}
+            {done && (
+              <span className="material-symbols-outlined text-primary text-sm">check</span>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

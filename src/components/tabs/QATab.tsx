@@ -28,7 +28,6 @@ export default function QATab() {
 
     if (data) setQuestions(data as LiveQuestion[]);
 
-    // Check if user already submitted
     if (user) {
       const { data: myQ } = await supabase
         .from("live_questions")
@@ -39,7 +38,6 @@ export default function QATab() {
 
       if (myQ && myQ.length > 0) setHasSubmitted(true);
 
-      // Fetch user's upvotes
       const { data: upvotes } = await supabase
         .from("question_upvotes")
         .select("question_id")
@@ -72,7 +70,7 @@ export default function QATab() {
       if (res.ok) {
         setQuestion("");
         setHasSubmitted(true);
-        setSubmitMessage("Your question has been submitted! We'll review it shortly.");
+        setSubmitMessage("Your question has been submitted for review.");
         setTimeout(() => setSubmitMessage(""), 5000);
         fetchQuestions();
       }
@@ -102,96 +100,118 @@ export default function QATab() {
   };
 
   return (
-    <div className="px-4 py-6 pb-24">
-      <h2 className="font-serif text-2xl text-foreground mb-1">Ask Steven</h2>
-      <p className="text-gray-500 text-sm mb-6">
-        Submit your question and upvote others
-      </p>
+    <div className="pt-24 pb-32 px-6 max-w-2xl mx-auto">
+      {/* Header */}
+      <section className="mb-8">
+        <h2 className="font-headline font-bold uppercase tracking-tighter text-4xl leading-none mb-2">
+          ASK STEVEN
+        </h2>
+        <p className="font-body text-sm font-light text-on-surface-variant/70 tracking-wide">
+          5 will be answered live
+        </p>
+      </section>
 
       {/* Submit area */}
       {!hasSubmitted ? (
-        <div className="mb-6 space-y-3">
-          <textarea
-            value={question}
-            onChange={(e) => setQuestion(e.target.value.slice(0, 300))}
-            placeholder="Ask Steven anything..."
-            className="w-full bg-card border border-border rounded-xl p-4 text-foreground placeholder-gray-600 resize-none h-24 focus:outline-none focus:border-pink"
-            maxLength={300}
-          />
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600 text-xs">{question.length}/300</span>
+        <section className="bg-[#111] rounded-xl p-8 shadow-2xl relative overflow-hidden ring-1 ring-outline-variant/10 mb-8">
+          <div className="space-y-6">
+            <div className="relative">
+              <textarea
+                value={question}
+                onChange={(e) => setQuestion(e.target.value.slice(0, 300))}
+                placeholder="What would you ask Steven?"
+                className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-6 font-body text-on-surface-variant placeholder:text-on-surface-variant/30 focus:ring-1 focus:ring-primary-container/50 focus:border-primary-container/50 transition-all resize-none"
+                rows={4}
+                maxLength={300}
+              />
+              <div className="absolute bottom-4 right-4 font-label text-[10px] tracking-widest text-on-surface-variant/40">
+                {question.length}/300
+              </div>
+            </div>
+
             <button
               onClick={submitQuestion}
               disabled={!question.trim() || submitting}
-              className="bg-pink hover:bg-pink-dark disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold py-2.5 px-6 rounded-xl transition-all active:scale-[0.98]"
+              className="w-full bg-surface-container-highest/50 border border-primary-container/30 text-primary-fixed-dim font-headline font-bold py-5 rounded-md hover:bg-primary-container hover:text-on-primary-container transition-all duration-300 uppercase tracking-widest text-sm flex items-center justify-center gap-3 group active:scale-[0.98] disabled:opacity-40"
             >
-              {submitting ? "Sending..." : "Broadcast"}
+              {submitting ? "SUBMITTING..." : "BROADCAST"}
+              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">
+                arrow_forward
+              </span>
             </button>
           </div>
-        </div>
+        </section>
       ) : (
-        <div className="mb-6 bg-card rounded-xl p-4 border border-pink/20">
-          <p className="text-pink text-sm">
-            {submitMessage || "Your question has been submitted."}
+        <div className="mb-8 bg-surface-container-low p-6 border-l-2 border-primary-container">
+          <p className="font-label text-sm text-primary">
+            {submitMessage || "Your question has been submitted for review."}
           </p>
         </div>
       )}
 
-      {/* Live queue */}
-      <div className="space-y-3">
-        <h3 className="text-gray-400 text-sm font-medium">
-          Live Questions ({questions.length})
-        </h3>
+      {/* Live Queue */}
+      <section>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-2 h-2 rounded-full bg-tertiary-container animate-pulse shadow-[0_0_8px_#b43041]" />
+          <h3 className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+            Live Queue ({questions.length})
+          </h3>
+        </div>
 
-        {questions.map((q) => (
-          <div
-            key={q.id}
-            className={`bg-card rounded-xl p-4 border ${
-              q.answered_at ? "border-green-500/30" : "border-border"
-            }`}
-          >
-            <div className="flex gap-3">
-              <button
-                onClick={() => upvoteQuestion(q.id)}
-                disabled={myUpvotes.has(q.id)}
-                className={`flex flex-col items-center min-w-[40px] pt-1 ${
-                  myUpvotes.has(q.id) ? "text-pink" : "text-gray-500"
-                }`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                  <path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd" />
-                </svg>
-                <span className="text-sm font-medium">{q.upvote_count}</span>
-              </button>
-              <div className="flex-1">
-                <p className="text-foreground text-sm">{q.question}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-gray-600 text-xs">
-                    {new Date(q.submitted_at).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                  {q.answered_at && (
-                    <span className="text-green-400 text-xs flex items-center gap-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
-                        <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                      </svg>
-                      Answered
+        <div className="space-y-4">
+          {questions.map((q) => (
+            <div
+              key={q.id}
+              className={`bg-surface-container-lowest border p-6 transition-all ${
+                q.answered_at
+                  ? "border-secondary/30"
+                  : "border-outline-variant/15"
+              }`}
+            >
+              <div className="flex gap-4">
+                <button
+                  onClick={() => upvoteQuestion(q.id)}
+                  disabled={myUpvotes.has(q.id)}
+                  className={`flex flex-col items-center min-w-[40px] pt-1 transition-all ${
+                    myUpvotes.has(q.id) ? "text-primary" : "text-on-surface-variant/40 hover:text-primary"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-xl">arrow_upward</span>
+                  <span className="font-label text-sm font-medium">{q.upvote_count}</span>
+                </button>
+                <div className="flex-1">
+                  <p className="font-body text-sm text-on-surface leading-relaxed">{q.question}</p>
+                  <div className="flex items-center gap-3 mt-3">
+                    <span className="font-label text-[10px] text-on-surface-variant/40 tracking-widest">
+                      {new Date(q.submitted_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
-                  )}
+                    {q.answered_at && (
+                      <span className="font-label text-[10px] text-secondary flex items-center gap-1 tracking-widest">
+                        <span
+                          className="material-symbols-outlined text-xs"
+                          style={{ fontVariationSettings: "'FILL' 1" }}
+                        >
+                          star
+                        </span>
+                        ANSWERED BY STEVEN
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {questions.length === 0 && (
-          <p className="text-gray-600 text-sm text-center py-8">
-            No questions yet. Be the first to ask!
-          </p>
-        )}
-      </div>
+          {questions.length === 0 && (
+            <p className="font-body text-sm text-on-surface-variant/40 text-center py-12">
+              No questions yet. Be the first to ask.
+            </p>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
