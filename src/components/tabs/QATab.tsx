@@ -6,6 +6,75 @@ import { useAuth } from "@/context/AuthContext";
 import { useSession } from "@/context/SessionContext";
 import type { LiveQuestion } from "@/types/database";
 
+// Demo questions for preview — community-aligned
+const DEMO_QUESTIONS: LiveQuestion[] = [
+  {
+    id: "demo-q1",
+    session_id: "demo",
+    registration_id: "demo-user-1",
+    question: "What made you decide to film this episode differently from the rest?",
+    upvote_count: 247,
+    ai_approved: true,
+    moderator_status: "starred",
+    ai_topic: null,
+    ai_duplicate_of: null,
+    submitted_at: new Date(Date.now() - 600000).toISOString(),
+    answered_at: new Date(Date.now() - 300000).toISOString(),
+  },
+  {
+    id: "demo-q2",
+    session_id: "demo",
+    registration_id: "demo-user-2",
+    question: "How do you envision the DOAC community evolving beyond just watching content together?",
+    upvote_count: 189,
+    ai_approved: true,
+    moderator_status: "approved",
+    ai_topic: null,
+    ai_duplicate_of: null,
+    submitted_at: new Date(Date.now() - 500000).toISOString(),
+    answered_at: null,
+  },
+  {
+    id: "demo-q3",
+    session_id: "demo",
+    registration_id: "demo-user-3",
+    question: "What was the hardest conversation you've had on the show that changed your perspective the most?",
+    upvote_count: 156,
+    ai_approved: true,
+    moderator_status: "approved",
+    ai_topic: null,
+    ai_duplicate_of: null,
+    submitted_at: new Date(Date.now() - 400000).toISOString(),
+    answered_at: null,
+  },
+  {
+    id: "demo-q4",
+    session_id: "demo",
+    registration_id: "demo-user-4",
+    question: "If you could go back and give your 21-year-old self one piece of advice, what would it be?",
+    upvote_count: 134,
+    ai_approved: true,
+    moderator_status: "approved",
+    ai_topic: null,
+    ai_duplicate_of: null,
+    submitted_at: new Date(Date.now() - 350000).toISOString(),
+    answered_at: null,
+  },
+  {
+    id: "demo-q5",
+    session_id: "demo",
+    registration_id: "demo-user-5",
+    question: "Will there be more community events like this? This is the most connected I've felt to the DOAC world.",
+    upvote_count: 112,
+    ai_approved: true,
+    moderator_status: "approved",
+    ai_topic: null,
+    ai_duplicate_of: null,
+    submitted_at: new Date(Date.now() - 200000).toISOString(),
+    answered_at: null,
+  },
+];
+
 export default function QATab() {
   const { user } = useAuth();
   const { session } = useSession();
@@ -15,9 +84,15 @@ export default function QATab() {
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
+  const [isDemo, setIsDemo] = useState(false);
 
   const fetchQuestions = useCallback(async () => {
-    if (!session) return;
+    if (!session) {
+      // No session — use demo data
+      setQuestions(DEMO_QUESTIONS);
+      setIsDemo(true);
+      return;
+    }
     const { data } = await supabase
       .from("live_questions")
       .select("*")
@@ -26,9 +101,14 @@ export default function QATab() {
       .in("moderator_status", ["approved", "starred"])
       .order("upvote_count", { ascending: false });
 
-    if (data) setQuestions(data as LiveQuestion[]);
+    if (data && data.length > 0) {
+      setQuestions(data as LiveQuestion[]);
+    } else {
+      setQuestions(DEMO_QUESTIONS);
+      setIsDemo(true);
+    }
 
-    if (user) {
+    if (user && session) {
       const { data: myQ } = await supabase
         .from("live_questions")
         .select("id")
@@ -59,6 +139,30 @@ export default function QATab() {
     if (!user || !question.trim() || submitting || hasSubmitted) return;
     setSubmitting(true);
 
+    if (isDemo) {
+      // Demo mode — add locally
+      const newQ: LiveQuestion = {
+        id: `demo-user-${Date.now()}`,
+        session_id: "demo",
+        registration_id: user.id,
+        question: question.trim(),
+        upvote_count: 1,
+        ai_approved: true,
+        moderator_status: "approved",
+        ai_topic: null,
+        ai_duplicate_of: null,
+        submitted_at: new Date().toISOString(),
+        answered_at: null,
+      };
+      setQuestions((prev) => [newQ, ...prev]);
+      setQuestion("");
+      setHasSubmitted(true);
+      setSubmitMessage("Your question has been submitted for review.");
+      setTimeout(() => setSubmitMessage(""), 5000);
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const token = sessionStorage.getItem("magic_token");
       const res = await fetch("/api/qa/submit", {
@@ -81,6 +185,16 @@ export default function QATab() {
 
   const upvoteQuestion = async (questionId: string) => {
     if (!user || myUpvotes.has(questionId)) return;
+
+    if (isDemo) {
+      setMyUpvotes((prev) => new Set([...prev, questionId]));
+      setQuestions((prev) =>
+        prev.map((q) =>
+          q.id === questionId ? { ...q, upvote_count: q.upvote_count + 1 } : q
+        )
+      );
+      return;
+    }
 
     const token = sessionStorage.getItem("magic_token");
     const res = await fetch("/api/qa/upvote", {

@@ -6,6 +6,26 @@ import { useAuth } from "@/context/AuthContext";
 import { useSession } from "@/context/SessionContext";
 import type { ConversationCard, Visibility } from "@/types/database";
 
+// Demo icebreaker cards for preview
+const DEMO_CARDS: ConversationCard[] = [
+  {
+    id: "demo-card-1",
+    session_id: "demo",
+    card_image_url: "",
+    prompt_text: "What's the one conversation or episode that genuinely changed how you think about something?",
+    display_order: 1,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "demo-card-2",
+    session_id: "demo",
+    card_image_url: "",
+    prompt_text: "If you could sit across from Steven for 5 minutes, what's the one thing you'd want him to know about you?",
+    display_order: 2,
+    created_at: new Date().toISOString(),
+  },
+];
+
 export default function CardsTab() {
   const { user } = useAuth();
   const { session } = useSession();
@@ -16,16 +36,28 @@ export default function CardsTab() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<Set<string>>(new Set());
   const [answeredCount, setAnsweredCount] = useState(0);
+  const [isDemo, setIsDemo] = useState(false);
 
   const fetchCards = useCallback(async () => {
-    if (!session) return;
+    if (!session) {
+      setCards(DEMO_CARDS);
+      setAnsweredCount(342);
+      setIsDemo(true);
+      return;
+    }
     const { data } = await supabase
       .from("conversation_cards")
       .select("*")
       .eq("session_id", session.id)
       .order("display_order");
 
-    if (data) setCards(data as ConversationCard[]);
+    if (data && data.length > 0) {
+      setCards(data as ConversationCard[]);
+    } else {
+      setCards(DEMO_CARDS);
+      setAnsweredCount(342);
+      setIsDemo(true);
+    }
   }, [session]);
 
   const fetchAnswers = useCallback(async () => {
@@ -61,6 +93,14 @@ export default function CardsTab() {
     if (!user || !answer.trim() || submitting) return;
     const card = cards[currentIdx];
     setSubmitting(true);
+
+    if (isDemo) {
+      setAnswer("");
+      setSubmitted((prev) => new Set([...prev, card.id]));
+      setAnsweredCount((prev) => prev + 1);
+      setSubmitting(false);
+      return;
+    }
 
     try {
       const token = sessionStorage.getItem("magic_token");

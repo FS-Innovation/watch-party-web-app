@@ -21,20 +21,11 @@ const tabs: { id: TabId; label: string; icon: string }[] = [
 export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
   const { phase } = useSession();
 
-  const isTabAvailable = (tabId: TabId): boolean => {
-    switch (tabId) {
-      case "booth":
-      case "me":
-        return true;
-      case "cards":
-        return ["pre-screening", "half-time"].includes(phase);
-      case "polls":
-        return ["half-time", "part-2", "post-screening"].includes(phase);
-      case "qa":
-        return ["part-1", "half-time", "part-2"].includes(phase);
-      default:
-        return true;
-    }
+  // TODO: Re-enable phase gating for live event
+  // For now, all tabs available so the team can preview the full experience
+  const isTabAvailable = (_tabId: TabId): boolean => {
+    void phase; // suppress unused warning
+    return true;
   };
 
   return (

@@ -14,6 +14,46 @@ interface UserAnswers {
   [pollId: string]: string;
 }
 
+// Demo polls for preview — aligned with BTD screening brief
+const DEMO_POLLS: PollQuestion[] = [
+  {
+    id: "demo-1",
+    session_id: "demo",
+    question_text: "What was your favourite part of tonight?",
+    options: ["The episode itself", "The intermission & community vibes", "The live Q&A with Steven", "All of it — the full experience"],
+    poll_type: "single",
+    display_order: 1,
+    triggered_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "demo-2",
+    session_id: "demo",
+    question_text: "Would you attend another virtual screening?",
+    options: ["Absolutely — sign me up", "Maybe, depends on timing", "I'd prefer in-person", "Not for me"],
+    poll_type: "single",
+    display_order: 2,
+    triggered_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "demo-3",
+    session_id: "demo",
+    question_text: "Would you want a community space to connect with other members?",
+    options: ["Yes — Discord or similar", "Yes — WhatsApp or Telegram", "I'd lurk but probably not post", "No, I'm here for the content"],
+    poll_type: "single",
+    display_order: 3,
+    triggered_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+  },
+];
+
+const DEMO_RESULTS: PollResults = {
+  "demo-1": { "The episode itself": 412, "The intermission & community vibes": 689, "The live Q&A with Steven": 534, "All of it — the full experience": 847 },
+  "demo-2": { "Absolutely — sign me up": 1423, "Maybe, depends on timing": 387, "I'd prefer in-person": 201, "Not for me": 48 },
+  "demo-3": { "Yes — Discord or similar": 756, "Yes — WhatsApp or Telegram": 523, "I'd lurk but probably not post": 412, "No, I'm here for the content": 198 },
+};
+
 export default function PollsTab() {
   const { user } = useAuth();
   const { session } = useSession();
@@ -23,9 +63,17 @@ export default function PollsTab() {
   const [completionCount, setCompletionCount] = useState(0);
   const [totalTarget] = useState(2500);
   const [submitting, setSubmitting] = useState<string | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
 
   const fetchPolls = useCallback(async () => {
-    if (!session) return;
+    if (!session) {
+      // No session — use demo data for preview
+      setPolls(DEMO_POLLS);
+      setResults(DEMO_RESULTS);
+      setCompletionCount(1847);
+      setIsDemo(true);
+      return;
+    }
     const { data } = await supabase
       .from("poll_questions")
       .select("*")
@@ -33,7 +81,15 @@ export default function PollsTab() {
       .not("triggered_at", "is", null)
       .order("display_order");
 
-    if (data) setPolls(data as PollQuestion[]);
+    if (data && data.length > 0) {
+      setPolls(data as PollQuestion[]);
+    } else {
+      // No live polls — fall back to demo
+      setPolls(DEMO_POLLS);
+      setResults(DEMO_RESULTS);
+      setCompletionCount(1847);
+      setIsDemo(true);
+    }
   }, [session]);
 
   const fetchResults = useCallback(async () => {
@@ -106,6 +162,20 @@ export default function PollsTab() {
   const submitAnswer = async (pollId: string, answer: string) => {
     if (!user || submitting) return;
     setSubmitting(pollId);
+
+    if (isDemo) {
+      // Demo mode — handle locally
+      setUserAnswers((prev) => ({ ...prev, [pollId]: answer }));
+      setResults((prev) => ({
+        ...prev,
+        [pollId]: {
+          ...prev[pollId],
+          [answer]: (prev[pollId]?.[answer] || 0) + 1,
+        },
+      }));
+      setSubmitting(null);
+      return;
+    }
 
     try {
       const token = sessionStorage.getItem("magic_token");
