@@ -128,6 +128,72 @@ When Twilio is confirmed and magic links are live:
 
 Alternatively, keep the guest bypass as a permanent feature if you want the app to always be viewable by non-registered visitors.
 
+## Screening Memories (Photobooth & Profile)
+
+### Vision
+
+Each watch party becomes a **memory** tied to a user's profile. When a registered user attends a screening, their photos, poll answers, card responses, and moments are all saved under their profile — a keepsake from the night. Think of it like a concert ticket stub, but digital and richer.
+
+Over multiple screenings/watch parties, a user's profile becomes a collection of memories:
+
+```
+My Profile
+├── BTD Private Screening — Mar 2026
+│   ├── Step & Repeat photo
+│   ├── 3 polls answered
+│   ├── 1 question asked (and answered by Steven!)
+│   └── Moment: "The twist at the end broke me"
+├── Summer Watch Party — Jul 2026
+│   ├── Step & Repeat photo
+│   ├── 2 polls answered
+│   └── Moment: "Best soundtrack of the year"
+└── ...
+```
+
+### Guest Profile (Now — Local Only)
+
+For guest viewers, the profile lives **entirely in the browser** via `localStorage`:
+
+- Photos they take are stored as base64 data URLs in localStorage
+- Their "screening receipt" is assembled from local state only
+- Nothing persists across devices or browser clears
+- The Me tab shows their locally-stored photo + a CTA: *"Register to keep your screening memories forever"*
+
+**Implementation:**
+- On photo capture: `localStorage.setItem("guest_photos", JSON.stringify([...]))`
+- On Me tab load: read from localStorage and display
+- No server calls for guests — everything is client-side
+
+### Registered Profile (Future — Server-Persisted)
+
+For registered users, everything is saved to Supabase and tied to their `registration_id`:
+
+- **Photos** → Supabase Storage bucket, URL saved in `photobooth_entries`
+- **Poll answers** → `poll_responses` (already works)
+- **Card responses** → `conversation_card_responses` (already works)
+- **Q&A questions** → `live_questions` (already works)
+- **Moments** → `moment_captures` (already works)
+
+The only missing piece is **actual photo storage** — currently the photobooth save endpoint is a stub. Needs:
+1. Supabase Storage bucket (`screening-photos`)
+2. Upload the base64 image, get back a public URL
+3. Store the URL in `photobooth_entries.image_url`
+
+### Multi-Event Profile (Future Future)
+
+If this becomes a recurring watch party platform, the profile naturally extends:
+- Each `watch_party_session` is an "event" the user attended
+- The Me tab could show a timeline of past screenings
+- Photos, responses, and moments are already scoped by `session_id` in the schema — so the data model already supports this
+- Users build up a history: "I've been to 4 screenings"
+
+### What This Unlocks
+
+- **Shareability** — "Look at my screening receipt from last night" (screenshot-friendly)
+- **Community** — profiles become a social proof of participation
+- **Retention** — memories from past events bring people back for the next one
+- **Registration incentive** — guests see what they're missing out on persisting
+
 ## Files Reference
 
 | File | Role |
