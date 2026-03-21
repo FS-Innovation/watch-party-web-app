@@ -2,15 +2,158 @@
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+// MediaPipe is loaded dynamically to avoid webpack module resolution issues
+type ImageSegmenterType = {
+  segmentForVideo: (video: HTMLVideoElement, timestamp: number) => {
+    categoryMask?: { getAsUint8Array: () => Uint8Array; width: number; height: number; close: () => void };
+  };
+  close: () => void;
+};
+
+// --- Backdrop generation (canvas-drawn step-and-repeat patterns) ---
+
+interface Backdrop {
+  id: string;
+  label: string;
+  bgColor: string;
+  logoColor: string;
+  accentColor: string;
+}
+
+const BACKDROPS: Backdrop[] = [
+  { id: "classic", label: "Classic", bgColor: "#0a0a0a", logoColor: "#e91e8c", accentColor: "#1a1a1a" },
+  { id: "gold", label: "Gold", bgColor: "#1a1408", logoColor: "#d4a843", accentColor: "#2a2210" },
+  { id: "silver", label: "Silver", bgColor: "#111114", logoColor: "#b0b0b8", accentColor: "#1c1c20" },
+  { id: "neon", label: "Neon", bgColor: "#0a000a", logoColor: "#ff00ff", accentColor: "#1a001a" },
+];
+
+function drawStepAndRepeat(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  backdrop: Backdrop
+) {
+  // Fill background
+  ctx.fillStyle = backdrop.bgColor;
+  ctx.fillRect(0, 0, w, h);
+
+  // Subtle grid pattern
+  ctx.strokeStyle = backdrop.accentColor;
+  ctx.lineWidth = 1;
+  const gridSize = 120;
+  for (let x = 0; x < w; x += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+  }
+  for (let y = 0; y < h; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+
+  // Tiled "BTD" logos in a step-and-repeat pattern
+  ctx.font = "bold 28px Georgia, serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const spacingX = 160;
+  const spacingY = 120;
+
+  for (let row = 0; row * spacingY < h + spacingY; row++) {
+    const offsetX = row % 2 === 0 ? 0 : spacingX / 2;
+    for (let col = -1; col * spacingX < w + spacingX; col++) {
+      const x = col * spacingX + offsetX + spacingX / 2;
+      const y = row * spacingY + spacingY / 2;
+
+      // Logo text
+      ctx.fillStyle = backdrop.logoColor;
+      ctx.globalAlpha = 0.35;
+      ctx.fillText("BTD", x, y - 12);
+
+      // Subtitle
+      ctx.font = "10px Inter, sans-serif";
+      ctx.fillStyle = backdrop.logoColor;
+      ctx.globalAlpha = 0.2;
+      ctx.fillText("PRIVATE SCREENING", x, y + 10);
+
+      ctx.font = "bold 28px Georgia, serif";
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+function generateBackdropThumbnail(backdrop: Backdrop): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = 200;
+  canvas.height = 200;
+  const ctx = canvas.getContext("2d")!;
+  drawStepAndRepeat(ctx, 200, 200, backdrop);
+  return canvas.toDataURL("image/jpeg", 0.8);
+}
+
+// --- Main component ---
 
 export default function BoothTab() {
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const compositeCanvasRef = useRef<HTMLCanvasElement>(null);
+  const animFrameRef = useRef<number>(0);
+  const segmenterRef = useRef<ImageSegmenterType | null>(null);
+
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedBackdrop, setSelectedBackdrop] = useState<Backdrop>(BACKDROPS[0]);
+  const [segmenterReady, setSegmenterReady] = useState(false);
+  const [loadingSegmenter, setLoadingSegmenter] = useState(false);
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+
+  // Generate thumbnails on mount
+  useEffect(() => {
+    const thumbs: Record<string, string> = {};
+    BACKDROPS.forEach((b) => {
+      thumbs[b.id] = generateBackdropThumbnail(b);
+    });
+    setThumbnails(thumbs);
+  }, []);
+
+  // Initialize MediaPipe segmenter
+  const initSegmenter = useCallback(async () => {
+    if (segmenterRef.current) return;
+    setLoadingSegmenter(true);
+    try {
+      // Dynamic import to avoid webpack module resolution issues with MediaPipe
+      const cdnUrl = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { FilesetResolver, ImageSegmenter } = await (Function(`return import("${cdnUrl}")`)() as Promise<any>);
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+      );
+      const segmenter = await ImageSegmenter.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite",
+          delegate: "GPU",
+        },
+        runningMode: "VIDEO",
+        outputCategoryMask: true,
+        outputConfidenceMasks: false,
+      });
+      segmenterRef.current = segmenter as ImageSegmenterType;
+      setSegmenterReady(true);
+    } catch (err) {
+      console.error("Failed to load segmenter:", err);
+      // Fall back to no segmentation
+      setSegmenterReady(false);
+    } finally {
+      setLoadingSegmenter(false);
+    }
+  }, []);
 
   const startCamera = useCallback(async () => {
     try {
@@ -23,12 +166,18 @@ export default function BoothTab() {
         videoRef.current.srcObject = mediaStream;
       }
       setCameraActive(true);
+      // Start loading segmenter in parallel
+      initSegmenter();
     } catch {
       alert("Camera access is required for the photobooth.");
     }
-  }, []);
+  }, [initSegmenter]);
 
   const stopCamera = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
+    }
     if (stream) {
       stream.getTracks().forEach((t) => t.stop());
       setStream(null);
@@ -36,26 +185,139 @@ export default function BoothTab() {
     setCameraActive(false);
   }, [stream]);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (stream) stream.getTracks().forEach((t) => t.stop());
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (segmenterRef.current) {
+        segmenterRef.current.close();
+        segmenterRef.current = null;
+      }
     };
   }, [stream]);
 
-  const capturePhoto = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+  // Real-time compositing loop
+  useEffect(() => {
+    if (!cameraActive || !segmenterReady) return;
 
-    const size = Math.min(video.videoWidth, video.videoHeight);
+    const video = videoRef.current;
+    const compositeCanvas = compositeCanvasRef.current;
+    if (!video || !compositeCanvas) return;
+
+    const ctx = compositeCanvas.getContext("2d", { willReadFrequently: true })!;
+    let lastTime = 0;
+
+    const renderFrame = () => {
+      if (!video || video.readyState < 2 || !segmenterRef.current) {
+        animFrameRef.current = requestAnimationFrame(renderFrame);
+        return;
+      }
+
+      const now = performance.now();
+      // Throttle to ~20fps for performance
+      if (now - lastTime < 50) {
+        animFrameRef.current = requestAnimationFrame(renderFrame);
+        return;
+      }
+      lastTime = now;
+
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (vw === 0 || vh === 0) {
+        animFrameRef.current = requestAnimationFrame(renderFrame);
+        return;
+      }
+
+      const size = Math.min(vw, vh);
+      compositeCanvas.width = size;
+      compositeCanvas.height = size;
+
+      // Crop center of video
+      const sx = (vw - size) / 2;
+      const sy = (vh - size) / 2;
+
+      // Draw backdrop
+      drawStepAndRepeat(ctx, size, size, selectedBackdrop);
+
+      // Run segmentation
+      const result = segmenterRef.current.segmentForVideo(video, now);
+      const mask = result.categoryMask;
+
+      if (mask) {
+        // Draw video to an offscreen canvas for pixel access
+        const tmpCanvas = document.createElement("canvas");
+        tmpCanvas.width = size;
+        tmpCanvas.height = size;
+        const tmpCtx = tmpCanvas.getContext("2d")!;
+        tmpCtx.drawImage(video, sx, sy, size, size, 0, 0, size, size);
+
+        const videoImageData = tmpCtx.getImageData(0, 0, size, size);
+        const compositeImageData = ctx.getImageData(0, 0, size, size);
+        const maskData = mask.getAsUint8Array();
+        const maskWidth = mask.width;
+        const maskHeight = mask.height;
+
+        // Composite: where mask > 0 (person), use video pixels
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            // Map composite pixel to mask pixel
+            const mx = Math.floor((x / size) * maskWidth);
+            const my = Math.floor((y / size) * maskHeight);
+            const maskIdx = my * maskWidth + mx;
+            const isPerson = maskData[maskIdx] > 0;
+
+            if (isPerson) {
+              const idx = (y * size + x) * 4;
+              compositeImageData.data[idx] = videoImageData.data[idx];
+              compositeImageData.data[idx + 1] = videoImageData.data[idx + 1];
+              compositeImageData.data[idx + 2] = videoImageData.data[idx + 2];
+              compositeImageData.data[idx + 3] = 255;
+            }
+          }
+        }
+
+        ctx.putImageData(compositeImageData, 0, 0);
+        mask.close();
+      } else {
+        // No mask available — just draw video
+        ctx.drawImage(video, sx, sy, size, size, 0, 0, size, size);
+      }
+
+      animFrameRef.current = requestAnimationFrame(renderFrame);
+    };
+
+    animFrameRef.current = requestAnimationFrame(renderFrame);
+
+    return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = 0;
+      }
+    };
+  }, [cameraActive, segmenterReady, selectedBackdrop]);
+
+  const capturePhoto = () => {
+    const compositeCanvas = compositeCanvasRef.current;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
     canvas.width = 1080;
     canvas.height = 1080;
     const ctx = canvas.getContext("2d")!;
 
-    // Draw video (centered crop)
-    const sx = (video.videoWidth - size) / 2;
-    const sy = (video.videoHeight - size) / 2;
-    ctx.drawImage(video, sx, sy, size, size, 0, 0, 1080, 1080);
+    if (compositeCanvas && segmenterReady && compositeCanvas.width > 0) {
+      // Use the composited frame (person + backdrop)
+      ctx.drawImage(compositeCanvas, 0, 0, 1080, 1080);
+    } else {
+      // Fallback: use raw video
+      const video = videoRef.current;
+      if (!video) return;
+      const size = Math.min(video.videoWidth, video.videoHeight);
+      const sx = (video.videoWidth - size) / 2;
+      const sy = (video.videoHeight - size) / 2;
+      ctx.drawImage(video, sx, sy, size, size, 0, 0, 1080, 1080);
+    }
 
     // Draw BTD frame overlay
     drawFrame(ctx, 1080, 1080);
@@ -85,6 +347,7 @@ export default function BoothTab() {
     ctx.fillStyle = "#e91e8c";
     ctx.font = "bold 28px Georgia, serif";
     ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
     ctx.fillText("BTD PRIVATE SCREENING", w / 2, h - 55);
 
     ctx.fillStyle = "#999";
@@ -149,11 +412,39 @@ export default function BoothTab() {
         Virtual Step & Repeat
       </h2>
       <p className="text-gray-500 text-sm mb-6 text-center">
-        Strike a pose for the red carpet
+        Pick your backdrop and strike a pose
       </p>
 
       <canvas ref={canvasRef} className="hidden" />
 
+      {/* Backdrop selector — shown before and during camera */}
+      {!photo && (
+        <div className="flex gap-3 mb-6 overflow-x-auto pb-2 w-full max-w-sm justify-center">
+          {BACKDROPS.map((backdrop) => (
+            <button
+              key={backdrop.id}
+              onClick={() => setSelectedBackdrop(backdrop)}
+              className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all active:scale-95 ${
+                selectedBackdrop.id === backdrop.id
+                  ? "border-pink ring-2 ring-pink/30"
+                  : "border-border"
+              }`}
+            >
+              {thumbnails[backdrop.id] ? (
+                <img
+                  src={thumbnails[backdrop.id]}
+                  alt={backdrop.label}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full" style={{ backgroundColor: backdrop.bgColor }} />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Initial state — open camera button */}
       {!cameraActive && !photo && (
         <button
           onClick={startCamera}
@@ -167,15 +458,36 @@ export default function BoothTab() {
         </button>
       )}
 
+      {/* Camera active — live preview with background replacement */}
       {cameraActive && (
         <div className="relative w-full max-w-sm">
+          {/* Hidden video element for MediaPipe input */}
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
-            className="w-full aspect-square object-cover rounded-2xl border-4 border-pink"
+            className={segmenterReady ? "hidden" : "w-full aspect-square object-cover rounded-2xl border-4 border-pink"}
           />
+
+          {/* Composited canvas (person + backdrop) */}
+          {segmenterReady && (
+            <canvas
+              ref={compositeCanvasRef}
+              className="w-full aspect-square rounded-2xl border-4 border-pink object-cover"
+            />
+          )}
+
+          {/* Loading indicator */}
+          {loadingSegmenter && !segmenterReady && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl">
+              <p className="text-white text-sm font-medium animate-pulse">
+                Loading backdrop...
+              </p>
+            </div>
+          )}
+
+          {/* Capture button */}
           <button
             onClick={capturePhoto}
             className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-4 border-white bg-pink active:scale-90 transition-transform"
@@ -183,6 +495,7 @@ export default function BoothTab() {
         </div>
       )}
 
+      {/* Photo captured — review and actions */}
       {photo && (
         <div className="space-y-4 w-full max-w-sm">
           <img
