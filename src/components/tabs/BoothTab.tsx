@@ -438,7 +438,7 @@ export default function BoothTab() {
   };
 
   return (
-    <div className="pt-24 pb-32 px-6 max-w-2xl mx-auto min-h-screen">
+    <div className="pt-12 pb-28 px-6 max-w-2xl mx-auto min-h-screen">
       {/* Header */}
       <section className="mb-8">
         <div className="space-y-1 mb-2">
