@@ -137,7 +137,7 @@ export default function PollsTab() {
   }
 
   return (
-    <div className="pt-24 pb-32 px-6 max-w-2xl mx-auto">
+    <div className="pt-12 pb-28 px-6 max-w-2xl mx-auto">
       {/* Header */}
       <section className="mb-10">
         <div className="flex items-baseline gap-3 mb-2">

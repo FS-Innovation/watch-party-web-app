@@ -87,7 +87,7 @@ export default function MeTab() {
   const isPostScreening = phase === "post-screening";
 
   return (
-    <div className="relative px-6 pt-28 pb-32 max-w-lg mx-auto overflow-hidden min-h-screen">
+    <div className="relative px-6 pt-12 pb-28 max-w-lg mx-auto overflow-hidden min-h-screen">
       {/* Atmosphere Glow */}
       <div className="absolute -top-20 -left-20 w-64 h-64 bg-primary-container/20 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute top-1/2 -right-20 w-48 h-48 bg-secondary-container/10 rounded-full blur-[80px] pointer-events-none" />

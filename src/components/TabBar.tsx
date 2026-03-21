@@ -38,7 +38,7 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 w-full z-50 bg-[#0e0e0e]/80 backdrop-blur-2xl border-t border-outline-variant/15 pt-3 pb-8 px-4 shadow-[0_-10px_40px_rgba(26,107,122,0.1)]">
+    <nav className="fixed bottom-0 left-0 w-full z-50 bg-[#0e0e0e]/80 backdrop-blur-2xl border-t border-outline-variant/15 pt-3 px-4 shadow-[0_-10px_40px_rgba(26,107,122,0.1)]" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
       <div className="flex justify-around items-center max-w-lg mx-auto">
         {tabs.map((tab) => {
           const available = isTabAvailable(tab.id);

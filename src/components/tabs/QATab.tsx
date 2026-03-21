@@ -100,7 +100,7 @@ export default function QATab() {
   };
 
   return (
-    <div className="pt-24 pb-32 px-6 max-w-2xl mx-auto">
+    <div className="pt-12 pb-28 px-6 max-w-2xl mx-auto">
       {/* Header */}
       <section className="mb-8">
         <h2 className="font-headline font-bold uppercase tracking-tighter text-4xl leading-none mb-2">

@@ -99,7 +99,7 @@ export default function CardsTab() {
   const hasSubmitted = submitted.has(card.id);
 
   return (
-    <div className="pt-24 pb-32 px-6 max-w-2xl mx-auto min-h-screen">
+    <div className="pt-12 pb-28 px-6 max-w-2xl mx-auto min-h-screen">
       {/* Breadcrumb */}
       <div className="flex justify-between items-end mb-8">
         <div className="space-y-1">
