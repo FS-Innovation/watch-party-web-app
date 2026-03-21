@@ -29,10 +29,12 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-pink border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Loading your experience...</p>
+          <div className="w-8 h-8 border-2 border-primary-container border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="font-label text-[10px] uppercase tracking-[0.25em] text-on-surface-variant/50">
+            Loading your experience...
+          </p>
         </div>
       </div>
     );
@@ -40,15 +42,18 @@ function AppContent() {
 
   if (error || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6">
+      <div className="min-h-screen flex items-center justify-center px-6 bg-background">
         <div className="text-center max-w-sm">
-          <h1 className="font-serif text-2xl text-foreground mb-3">
-            BTD Private Screening
+          <p className="font-label text-[10px] uppercase tracking-[0.3em] text-secondary mb-3">
+            private screening
+          </p>
+          <h1 className="font-headline font-bold text-3xl uppercase tracking-tighter text-on-surface mb-4">
+            BTD
           </h1>
-          <p className="text-gray-400 mb-6">
+          <p className="font-body text-sm text-on-surface-variant/60 mb-8">
             {error || "Please use the link sent to your phone to access this screening."}
           </p>
-          <div className="w-12 h-[1px] bg-border mx-auto" />
+          <div className="w-12 h-px bg-outline-variant/20 mx-auto" />
         </div>
       </div>
     );

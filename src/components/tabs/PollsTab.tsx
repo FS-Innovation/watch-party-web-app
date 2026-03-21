@@ -21,7 +21,7 @@ export default function PollsTab() {
   const [results, setResults] = useState<PollResults>({});
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({});
   const [completionCount, setCompletionCount] = useState(0);
-  const [totalTarget] = useState(3500);
+  const [totalTarget] = useState(2500);
   const [submitting, setSubmitting] = useState<string | null>(null);
 
   const fetchPolls = useCallback(async () => {
@@ -54,7 +54,6 @@ export default function PollsTab() {
       setResults(grouped);
     }
 
-    // Fetch user's own answers
     if (user) {
       const { data: myAnswers } = await supabase
         .from("poll_responses")
@@ -71,10 +70,8 @@ export default function PollsTab() {
       }
     }
 
-    // Calculate completion count (people who answered all polls)
     if (data) {
       const userPollCounts: { [userId: string]: Set<string> } = {};
-      // We need a different query for this
       const { data: allResponses } = await supabase
         .from("poll_responses")
         .select("registration_id, poll_id")
@@ -127,58 +124,57 @@ export default function PollsTab() {
     }
   };
 
+  const pct = totalTarget > 0 ? Math.round((completionCount / totalTarget) * 100) : 0;
+
   if (!polls.length) {
     return (
-      <div className="flex flex-col items-center justify-center h-full px-6 text-center">
-        <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-8 h-8 text-gray-500">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75z" />
-          </svg>
-        </div>
-        <h3 className="font-serif text-xl text-gray-400 mb-2">Polls coming soon</h3>
-        <p className="text-gray-600 text-sm">Polls will open during half-time.</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
+        <span className="material-symbols-outlined text-4xl text-on-surface-variant/30 mb-4">poll</span>
+        <h3 className="font-headline font-bold text-xl text-on-surface-variant mb-2">Polls coming soon</h3>
+        <p className="font-body text-sm text-on-surface-variant/60">Polls will open during intermission.</p>
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-6 pb-24 space-y-6">
-      {/* Completion counter */}
-      <div className="bg-card rounded-2xl p-4 text-center border border-border">
-        <p className="text-gray-400 text-sm mb-1">Collective Challenge</p>
-        <p className="font-serif text-3xl text-foreground">
-          <span className="text-pink">{completionCount.toLocaleString()}</span>
-          <span className="text-gray-500 text-xl"> / {totalTarget.toLocaleString()}</span>
-        </p>
-        <p className="text-gray-500 text-xs mt-1">completed all polls</p>
-        <div className="mt-3 h-2 bg-gray-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-pink to-pink-light rounded-full transition-all duration-500"
-            style={{ width: `${Math.min((completionCount / totalTarget) * 100, 100)}%` }}
-          />
+    <div className="pt-24 pb-32 px-6 max-w-2xl mx-auto">
+      {/* Header */}
+      <section className="mb-10">
+        <div className="flex items-baseline gap-3 mb-2">
+          <div className="w-2 h-2 rounded-full bg-tertiary-container animate-pulse shadow-[0_0_12px_#b43041]" />
+          <h2 className="font-headline font-bold uppercase tracking-tighter text-4xl text-on-surface">LIVE POLLS</h2>
         </div>
-      </div>
+        <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/60">Real-time audience sentiment</p>
+      </section>
 
-      {/* Poll questions */}
-      {polls.map((poll, idx) => {
+      {/* Poll Cards */}
+      {polls.map((poll) => {
         const pollResults = results[poll.id] || {};
         const totalVotes = Object.values(pollResults).reduce((a, b) => a + b, 0);
         const hasAnswered = !!userAnswers[poll.id];
         const options = Array.isArray(poll.options) ? poll.options : [];
 
         return (
-          <div key={poll.id} className="bg-card rounded-2xl p-5 border border-border">
-            <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">
-              Poll {idx + 1} of {polls.length}
-            </p>
-            <h3 className="font-serif text-lg text-foreground mb-4">
+          <div key={poll.id} className="bg-surface-container-lowest border border-outline-variant/15 p-8 mb-8 relative overflow-hidden">
+            {hasAnswered && (
+              <div className="absolute top-0 right-0 p-4">
+                <span className="font-label text-[10px] text-primary tracking-widest">VOTED</span>
+              </div>
+            )}
+            {!hasAnswered && (
+              <div className="absolute top-0 right-0 p-4">
+                <span className="font-label text-[10px] text-secondary tracking-widest">ACTIVE</span>
+              </div>
+            )}
+
+            <h3 className="font-headline text-2xl mb-8 leading-tight tracking-tight max-w-xs">
               {poll.question_text}
             </h3>
 
-            <div className="space-y-2">
+            <div className="space-y-4">
               {options.map((option: string) => {
                 const count = pollResults[option] || 0;
-                const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+                const optPct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
                 const isSelected = userAnswers[poll.id] === option;
 
                 return (
@@ -186,26 +182,24 @@ export default function PollsTab() {
                     key={option}
                     onClick={() => !hasAnswered && submitAnswer(poll.id, option)}
                     disabled={hasAnswered || submitting === poll.id}
-                    className={`w-full text-left relative rounded-xl p-4 transition-all ${
+                    className={`w-full py-4 px-6 border text-left font-label text-sm tracking-wide transition-all active:scale-[0.98] relative overflow-hidden ${
                       isSelected
-                        ? "border-2 border-pink bg-pink/10"
+                        ? "border-primary text-primary shadow-[0_0_20px_rgba(26,107,122,0.2)] bg-primary/5"
                         : hasAnswered
-                        ? "border border-border bg-card-hover"
-                        : "border border-border hover:border-gray-500 active:scale-[0.98]"
+                        ? "border-outline-variant/15 text-on-surface-variant"
+                        : "border-outline-variant/15 text-on-surface-variant hover:border-primary/40"
                     }`}
                   >
                     {hasAnswered && (
                       <div
-                        className="absolute inset-0 bg-pink/5 rounded-xl transition-all duration-500"
-                        style={{ width: `${pct}%` }}
+                        className="absolute inset-0 bg-primary/5 transition-all duration-500"
+                        style={{ width: `${optPct}%` }}
                       />
                     )}
                     <div className="relative flex justify-between items-center">
-                      <span className="text-sm text-foreground">{option}</span>
+                      <span className="uppercase">{option}</span>
                       {hasAnswered && (
-                        <span className="text-sm text-gray-400 ml-2">
-                          {pct}%
-                        </span>
+                        <span className="text-on-surface-variant/60">{optPct}%</span>
                       )}
                     </div>
                   </button>
@@ -214,13 +208,61 @@ export default function PollsTab() {
             </div>
 
             {hasAnswered && (
-              <p className="text-gray-600 text-xs mt-3 text-center">
-                {totalVotes.toLocaleString()} votes · Results update in real-time
+              <p className="font-label text-[10px] text-on-surface-variant/40 mt-4 tracking-widest text-center">
+                {totalVotes.toLocaleString()} VOTES · LIVE
               </p>
             )}
           </div>
         );
       })}
+
+      {/* Collective Challenge */}
+      <section className="mb-12">
+        <h2 className="font-headline font-bold uppercase tracking-tighter text-4xl mb-6 text-on-surface">
+          COLLECTIVE CHALLENGE
+        </h2>
+        <div className="bg-surface-container/40 p-8 border-l-2 border-primary-container">
+          <div className="flex justify-between items-end mb-4">
+            <span className="font-headline text-5xl font-extrabold tracking-tighter text-on-surface">
+              {completionCount.toLocaleString()}
+            </span>
+            <span className="font-label text-sm tracking-widest text-on-surface-variant/40">
+              / {totalTarget.toLocaleString()} RESPONSES
+            </span>
+          </div>
+          <div className="w-full h-px bg-outline-variant/20 mb-1">
+            <div
+              className="h-full bg-primary-container shadow-[0_0_15px_#1a6b7a]"
+              style={{ width: `${Math.min(pct, 100)}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-4">
+            <p className="font-label text-[10px] tracking-[0.15em] text-on-surface-variant/60">
+              GOAL: UNLOCK BONUS CONTENT
+            </p>
+            <p className="font-label text-[10px] tracking-[0.15em] text-primary">
+              {pct}% COMPLETE
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Mystery Note */}
+      <div className="mt-16 space-y-12">
+        <div className="relative py-4 pl-12">
+          <span className="material-symbols-outlined absolute left-0 top-6 text-secondary/40 text-3xl">
+            edit_note
+          </span>
+          <p className="font-cursive text-3xl text-secondary-fixed-dim leading-snug">
+            &ldquo;when we get there, Steven has something to say&rdquo;
+          </p>
+        </div>
+        <div className="text-center pt-8 border-t border-outline-variant/10">
+          <p className="font-label text-[10px] uppercase tracking-[0.25em] text-on-surface-variant/50 leading-relaxed">
+            Complete all polls to be considered for the meet &amp; greet
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

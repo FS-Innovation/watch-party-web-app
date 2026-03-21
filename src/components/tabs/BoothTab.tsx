@@ -21,10 +21,10 @@ interface Backdrop {
 }
 
 const BACKDROPS: Backdrop[] = [
-  { id: "classic", label: "Classic", bgColor: "#0a0a0a", logoColor: "#e91e8c", accentColor: "#1a1a1a" },
-  { id: "gold", label: "Gold", bgColor: "#1a1408", logoColor: "#d4a843", accentColor: "#2a2210" },
-  { id: "silver", label: "Silver", bgColor: "#111114", logoColor: "#b0b0b8", accentColor: "#1c1c20" },
-  { id: "neon", label: "Neon", bgColor: "#0a000a", logoColor: "#ff00ff", accentColor: "#1a001a" },
+  { id: "classic", label: "Teal", bgColor: "#0e0e0e", logoColor: "#1a6b7a", accentColor: "#1c1b1b" },
+  { id: "gold", label: "Sand", bgColor: "#1a1408", logoColor: "#efbd8a", accentColor: "#2a2210" },
+  { id: "silver", label: "Silver", bgColor: "#111114", logoColor: "#8bd1e2", accentColor: "#1c1c20" },
+  { id: "neon", label: "Crimson", bgColor: "#0e0808", logoColor: "#b43041", accentColor: "#1a0a0e" },
 ];
 
 function drawStepAndRepeat(
@@ -328,43 +328,74 @@ export default function BoothTab() {
   };
 
   const drawFrame = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
-    // Border
-    ctx.strokeStyle = "#e91e8c";
-    ctx.lineWidth = 8;
-    ctx.strokeRect(4, 4, w - 8, h - 8);
+    const cornerLen = 60;
+    const cornerInset = 16;
 
-    // Inner border
-    ctx.strokeStyle = "rgba(233, 30, 140, 0.3)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(20, 20, w - 40, h - 40);
+    // Corner brackets (teal)
+    ctx.strokeStyle = "#1a6b7a";
+    ctx.lineWidth = 3;
+    // Top-left
+    ctx.beginPath();
+    ctx.moveTo(cornerInset, cornerInset + cornerLen);
+    ctx.lineTo(cornerInset, cornerInset);
+    ctx.lineTo(cornerInset + cornerLen, cornerInset);
+    ctx.stroke();
+    // Top-right
+    ctx.beginPath();
+    ctx.moveTo(w - cornerInset - cornerLen, cornerInset);
+    ctx.lineTo(w - cornerInset, cornerInset);
+    ctx.lineTo(w - cornerInset, cornerInset + cornerLen);
+    ctx.stroke();
+    // Bottom-left
+    ctx.beginPath();
+    ctx.moveTo(cornerInset, h - cornerInset - cornerLen);
+    ctx.lineTo(cornerInset, h - cornerInset);
+    ctx.lineTo(cornerInset + cornerLen, h - cornerInset);
+    ctx.stroke();
+    // Bottom-right
+    ctx.beginPath();
+    ctx.moveTo(w - cornerInset - cornerLen, h - cornerInset);
+    ctx.lineTo(w - cornerInset, h - cornerInset);
+    ctx.lineTo(w - cornerInset, h - cornerInset - cornerLen);
+    ctx.stroke();
 
     // Bottom banner
-    const bannerH = 100;
-    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    const bannerH = 90;
+    const grad = ctx.createLinearGradient(0, h - bannerH, 0, h);
+    grad.addColorStop(0, "rgba(14, 14, 14, 0.0)");
+    grad.addColorStop(0.4, "rgba(14, 14, 14, 0.85)");
+    grad.addColorStop(1, "rgba(14, 14, 14, 0.95)");
+    ctx.fillStyle = grad;
     ctx.fillRect(0, h - bannerH, w, bannerH);
 
-    // Text
-    ctx.fillStyle = "#e91e8c";
-    ctx.font = "bold 28px Georgia, serif";
+    // Banner text
+    ctx.fillStyle = "#efbd8a";
+    ctx.font = "bold 24px Epilogue, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
-    ctx.fillText("BTD PRIVATE SCREENING", w / 2, h - 55);
+    ctx.fillText("BTD PRIVATE SCREENING", w / 2, h - 45);
 
-    ctx.fillStyle = "#999";
-    ctx.font = "16px Inter, sans-serif";
-    ctx.fillText(new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }), w / 2, h - 25);
+    ctx.fillStyle = "#8bd1e2";
+    ctx.font = "11px Inter, sans-serif";
+    ctx.letterSpacing = "3px";
+    ctx.fillText(new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(), w / 2, h - 22);
 
-    // Top corner logo area
-    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    // Top bar
+    const topGrad = ctx.createLinearGradient(0, 0, 0, 50);
+    topGrad.addColorStop(0, "rgba(14, 14, 14, 0.9)");
+    topGrad.addColorStop(1, "rgba(14, 14, 14, 0.0)");
+    ctx.fillStyle = topGrad;
     ctx.fillRect(0, 0, w, 50);
-    ctx.fillStyle = "#e91e8c";
-    ctx.font = "bold 18px Georgia, serif";
+
+    ctx.fillStyle = "#1a6b7a";
+    ctx.font = "bold 16px Epilogue, sans-serif";
     ctx.textAlign = "left";
     ctx.fillText("BTD", 30, 33);
-    ctx.fillStyle = "#888";
-    ctx.font = "14px Inter, sans-serif";
+
+    ctx.fillStyle = "rgba(139, 209, 226, 0.5)";
+    ctx.font = "11px Inter, sans-serif";
     ctx.textAlign = "right";
-    ctx.fillText(`#${String(user?.ticket_number || 0).padStart(4, "0")}`, w - 30, 33);
+    ctx.fillText(`#BTD-${String(user?.ticket_number || 0).padStart(4, "0")}`, w - 30, 33);
   };
 
   const downloadPhoto = () => {
@@ -407,27 +438,36 @@ export default function BoothTab() {
   };
 
   return (
-    <div className="px-4 py-6 pb-24 flex flex-col items-center">
-      <h2 className="font-serif text-2xl text-foreground mb-2 text-center">
-        Virtual Step & Repeat
-      </h2>
-      <p className="text-gray-500 text-sm mb-6 text-center">
-        Pick your backdrop and strike a pose
-      </p>
+    <div className="pt-24 pb-32 px-6 max-w-2xl mx-auto min-h-screen">
+      {/* Header */}
+      <section className="mb-8">
+        <div className="space-y-1 mb-2">
+          <p className="font-label text-[10px] uppercase tracking-[0.25em] text-on-surface-variant font-medium">
+            STEP & REPEAT
+          </p>
+          <div className="h-0.5 w-12 bg-primary-container" />
+        </div>
+        <h2 className="font-headline font-bold uppercase tracking-tighter text-4xl leading-none text-on-surface">
+          VIRTUAL BOOTH
+        </h2>
+        <p className="font-body text-sm font-light text-on-surface-variant/70 tracking-wide mt-2">
+          Pick your backdrop and strike a pose
+        </p>
+      </section>
 
       <canvas ref={canvasRef} className="hidden" />
 
       {/* Backdrop selector — shown before and during camera */}
       {!photo && (
-        <div className="flex gap-3 mb-6 overflow-x-auto pb-2 w-full max-w-sm justify-center">
+        <div className="flex gap-3 mb-6 overflow-x-auto pb-2 no-scrollbar">
           {BACKDROPS.map((backdrop) => (
             <button
               key={backdrop.id}
               onClick={() => setSelectedBackdrop(backdrop)}
-              className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all active:scale-95 ${
+              className={`flex-shrink-0 w-16 h-16 rounded-sm overflow-hidden border-2 transition-all active:scale-95 ${
                 selectedBackdrop.id === backdrop.id
-                  ? "border-pink ring-2 ring-pink/30"
-                  : "border-border"
+                  ? "border-primary-container ring-2 ring-primary-container/30"
+                  : "border-outline-variant/20"
               }`}
             >
               {thumbnails[backdrop.id] ? (
@@ -441,78 +481,129 @@ export default function BoothTab() {
               )}
             </button>
           ))}
+          <div className="flex items-center pl-2">
+            <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant/40">
+              {selectedBackdrop.label}
+            </span>
+          </div>
         </div>
       )}
 
       {/* Initial state — open camera button */}
       {!cameraActive && !photo && (
-        <button
-          onClick={startCamera}
-          className="w-64 h-64 rounded-2xl border-2 border-dashed border-pink/40 flex flex-col items-center justify-center gap-3 hover:border-pink transition-colors active:scale-[0.98]"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-12 h-12 text-pink">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
-          </svg>
-          <span className="text-pink font-medium">Open Camera</span>
-        </button>
+        <div className="flex flex-col items-center">
+          <button
+            onClick={startCamera}
+            className="w-full aspect-square max-w-sm bg-surface-container-lowest border border-outline-variant/15 flex flex-col items-center justify-center gap-4 hover:border-primary-container/40 transition-all active:scale-[0.98] relative overflow-hidden"
+          >
+            {/* Corner brackets */}
+            <div className="absolute top-4 left-4 w-8 h-8 border-l-2 border-t-2 border-primary-container/40" />
+            <div className="absolute top-4 right-4 w-8 h-8 border-r-2 border-t-2 border-primary-container/40" />
+            <div className="absolute bottom-4 left-4 w-8 h-8 border-l-2 border-b-2 border-primary-container/40" />
+            <div className="absolute bottom-4 right-4 w-8 h-8 border-r-2 border-b-2 border-primary-container/40" />
+
+            <span className="material-symbols-outlined text-5xl text-primary-container/60">
+              photo_camera
+            </span>
+            <span className="font-label text-sm uppercase tracking-widest text-on-surface-variant/60">
+              Open Camera
+            </span>
+          </button>
+        </div>
       )}
 
       {/* Camera active — live preview with background replacement */}
       {cameraActive && (
-        <div className="relative w-full max-w-sm">
-          {/* Hidden video element for MediaPipe input */}
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className={segmenterReady ? "hidden" : "w-full aspect-square object-cover rounded-2xl border-4 border-pink"}
-          />
+        <div className="relative w-full max-w-sm mx-auto">
+          {/* Live feed indicator */}
+          <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-surface/70 backdrop-blur-sm px-3 py-1.5 rounded-sm">
+            <div className="w-2 h-2 rounded-full bg-tertiary-container animate-pulse shadow-[0_0_8px_#b43041]" />
+            <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+              Live Feed
+            </span>
+          </div>
 
-          {/* Composited canvas (person + backdrop) */}
-          {segmenterReady && (
-            <canvas
-              ref={compositeCanvasRef}
-              className="w-full aspect-square rounded-2xl border-4 border-pink object-cover"
+          {/* Metadata */}
+          <div className="absolute top-4 right-4 z-10 bg-surface/70 backdrop-blur-sm px-3 py-1.5 rounded-sm">
+            <span className="font-label text-[10px] tracking-widest text-on-surface-variant/50">
+              ISO 100 · 4K
+            </span>
+          </div>
+
+          {/* Video container with corner brackets */}
+          <div className="relative">
+            {/* Corner brackets */}
+            <div className="absolute top-0 left-0 w-10 h-10 border-l-2 border-t-2 border-primary-container z-10 pointer-events-none" />
+            <div className="absolute top-0 right-0 w-10 h-10 border-r-2 border-t-2 border-primary-container z-10 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-10 h-10 border-l-2 border-b-2 border-primary-container z-10 pointer-events-none" />
+            <div className="absolute bottom-0 right-0 w-10 h-10 border-r-2 border-b-2 border-primary-container z-10 pointer-events-none" />
+
+            {/* Hidden video element for MediaPipe input */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={segmenterReady ? "hidden" : "w-full aspect-square object-cover"}
             />
-          )}
 
-          {/* Loading indicator */}
-          {loadingSegmenter && !segmenterReady && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl">
-              <p className="text-white text-sm font-medium animate-pulse">
-                Loading backdrop...
-              </p>
-            </div>
-          )}
+            {/* Composited canvas (person + backdrop) */}
+            {segmenterReady && (
+              <canvas
+                ref={compositeCanvasRef}
+                className="w-full aspect-square object-cover"
+              />
+            )}
+
+            {/* Loading indicator */}
+            {loadingSegmenter && !segmenterReady && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface/60 backdrop-blur-sm">
+                <div className="w-6 h-6 border-2 border-primary-container border-t-transparent rounded-full animate-spin mb-3" />
+                <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant animate-pulse">
+                  Loading backdrop...
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Capture button */}
-          <button
-            onClick={capturePhoto}
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-4 border-white bg-pink active:scale-90 transition-transform"
-          />
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={capturePhoto}
+              className="w-16 h-16 rounded-full border-4 border-on-surface/80 bg-transparent active:scale-90 transition-transform relative"
+            >
+              <div className="absolute inset-1.5 rounded-full bg-on-surface/90" />
+            </button>
+          </div>
         </div>
       )}
 
       {/* Photo captured — review and actions */}
       {photo && (
-        <div className="space-y-4 w-full max-w-sm">
-          <img
-            src={photo}
-            alt="Your photo"
-            className="w-full aspect-square rounded-2xl"
-          />
+        <div className="space-y-6 w-full max-w-sm mx-auto">
+          <div className="relative">
+            {/* Corner brackets */}
+            <div className="absolute top-0 left-0 w-10 h-10 border-l-2 border-t-2 border-primary-container z-10" />
+            <div className="absolute top-0 right-0 w-10 h-10 border-r-2 border-t-2 border-primary-container z-10" />
+            <div className="absolute bottom-0 left-0 w-10 h-10 border-l-2 border-b-2 border-primary-container z-10" />
+            <div className="absolute bottom-0 right-0 w-10 h-10 border-r-2 border-b-2 border-primary-container z-10" />
+            <img
+              src={photo}
+              alt="Your photo"
+              className="w-full aspect-square"
+            />
+          </div>
+
           <div className="flex gap-3">
             <button
               onClick={retake}
-              className="flex-1 py-3 rounded-xl border border-border text-gray-400 font-medium active:scale-[0.98]"
+              className="flex-1 py-4 border border-outline-variant/20 text-on-surface-variant font-label text-sm uppercase tracking-widest hover:border-primary-container/40 transition-all active:scale-[0.98]"
             >
               Retake
             </button>
             <button
               onClick={() => { savePhoto(); downloadPhoto(); }}
-              className="flex-1 py-3 rounded-xl bg-pink text-white font-medium active:scale-[0.98]"
+              className="flex-1 py-4 bg-primary-container text-on-primary-container font-headline font-bold text-sm uppercase tracking-widest hover:bg-primary-container/80 transition-all active:scale-[0.98]"
             >
               Save
             </button>
@@ -520,8 +611,9 @@ export default function BoothTab() {
           {"share" in navigator && (
             <button
               onClick={sharePhoto}
-              className="w-full py-3 rounded-xl border border-pink text-pink font-medium active:scale-[0.98]"
+              className="w-full py-4 border border-secondary/30 text-secondary font-label text-sm uppercase tracking-widest hover:bg-secondary/10 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
             >
+              <span className="material-symbols-outlined text-sm">share</span>
               Share to Socials
             </button>
           )}
